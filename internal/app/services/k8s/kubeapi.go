@@ -1,24 +1,28 @@
-package app
+package k8s
 
 import (
     "flag"
-    "fmt"
-    "github.com/kubernetes/client-go/kubernetes"
-    "github.com/kubernetes/client-go/tools/clientcmd"
+    v12 "k8s.io/api/core/v1"
     v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/client-go/kubernetes"
     _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+    "k8s.io/client-go/tools/clientcmd"
     //"k8s.io/apimachinery/pkg/apis/meta/v1"
-    "log"
     "os/user"
     "path/filepath"
 )
 
-func LoadKube() {
+var _client *kubernetes.Clientset
+
+func getKubeClient() *kubernetes.Clientset {
+    if _client != nil{
+        return _client
+    }
 
     // Path the kube config
     usr, err := user.Current()
     if err != nil {
-        log.Fatal( err )
+        panic(err)
     }
 
     var kubeconfig *string
@@ -31,19 +35,27 @@ func LoadKube() {
 
     config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
     if err != nil {
-        panic(err.Error())
-    }
-
-    // creates the clientset
-    clientset, err := kubernetes.NewForConfig(config)
-
-    if err != nil {
-        log.Fatal(err)
         panic(err)
     }
 
-    // access the API to list pods
-    pods, _:= clientset.CoreV1().Namespaces().List(v1.ListOptions{})
+    // creates the clientset
+    _client, err = kubernetes.NewForConfig(config)
+    if err != nil {
+        panic(err)
+    }
 
-    fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
+    return _client
+}
+
+func KubeInit() {
+    getKubeClient()
+}
+
+func GetNamespaces() []v12.Namespace {
+    client := getKubeClient()
+
+    // access the API to list pods
+    namespaces , _:= client.CoreV1().Namespaces().List(v1.ListOptions{})
+
+    return namespaces.Items
 }

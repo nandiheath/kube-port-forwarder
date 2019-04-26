@@ -1,9 +1,9 @@
 package main
 
 import (
-    "github.com/nandiheath/kube-port-forwarder/internal/app"
+    "github.com/nandiheath/kube-port-forwarder/internal/app/server"
 )
 
 func main() {
-    app.StartServer()
+    server.StartServer()
 }
