@@ -1,2 +1,4 @@
 .idea
 kube-port-forwarder
+coverage
+.nyc_output
