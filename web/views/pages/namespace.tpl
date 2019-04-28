@@ -12,19 +12,19 @@
     <tbody>
       {{range $val := .services }}
         <tr>
-          <td>{{check $val}}</td>
-          <td>{{$val.Spec.Type}}</td>
-          <td>
-            {{ range $port := $val.Spec.Ports }}
-              <p>{{$port.Port}}</p>
-            {{ end }}
-          </td>
-
-            <a href="/namespace/{{$val.Name}}">{{$val.Name}}</a>
-          </td>
-          <td>
-            <a href="/namespace/{{$val.Name}}">{{$val.Name}}</a>
-          </td>
+            <td>{{$val.Name}}</td>
+            <td>{{$val.Type}}</td>
+            <td>
+              {{ range $port := $val.Ports }}
+                <form method="POST">
+                  <p>{{$port.Port}} -> {{$port.TargetPort}} {{$port.Forwarded}}</p>
+                  <input type="hidden" name="service" value={{$val.Name}}>
+                  <input type="hidden" name="from_port" value={{$port.Port}}>
+                  <input type="text" name="to_port">
+                  <input type="submit" value="submit">
+                </form>
+              {{ end }}
+            </td>
         </tr>
       {{end}}
     </tbody>

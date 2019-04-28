@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type Service struct {
+type ForwardedService struct {
 	ServiceName string
 	Namespace   string
 	FromPort    int
@@ -17,12 +17,12 @@ type Service struct {
 	Status      string
 }
 
-type ServiceMonitor struct {
-	Services []*Service
+type ForwardedServiceList struct {
+	Services []*ForwardedService
 }
 
-var _serviceMonitor = ServiceMonitor{
-	Services: []*Service{},
+var _serviceMonitor = ForwardedServiceList{
+	Services: []*ForwardedService{},
 }
 
 func registerService(namespace string, serviceName string, fromPort int, toPort int) bool {
@@ -32,7 +32,7 @@ func registerService(namespace string, serviceName string, fromPort int, toPort 
 		return false
 	}
 
-	service = &Service{
+	service = &ForwardedService{
 		ServiceName: serviceName,
 		Namespace:   namespace,
 		FromPort:    fromPort,
@@ -47,7 +47,7 @@ func registerService(namespace string, serviceName string, fromPort int, toPort 
 	return true
 }
 
-func runService(service *Service) {
+func runService(service *ForwardedService) {
 	cmd := exec.Command("kubectl", "port-forward", "svc/"+service.ServiceName, "-n", service.Namespace, fmt.Sprintf("%d:%d", service.ToPort, service.FromPort))
 	err := cmd.Start()
 	if err != nil {
@@ -66,7 +66,7 @@ func runService(service *Service) {
 	}
 }
 
-func getService(namespace string, serviceName string) *Service {
+func getService(namespace string, serviceName string) *ForwardedService{
 	for _, service := range _serviceMonitor.Services {
 		if service.ServiceName == serviceName && service.Namespace == namespace {
 			return service
@@ -83,8 +83,8 @@ func PortForward(namespace string, serviceName string, fromPort int, toPort int)
 	return true
 }
 
-func GetServiceStatus(namespace string) []*Service {
-	var services []*Service
+func GetForwardedService(namespace string) []*ForwardedService {
+	var services []*ForwardedService
 	for _, service := range _serviceMonitor.Services {
 		if service.Namespace == namespace {
 			services = append(services, service)

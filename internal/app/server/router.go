@@ -1,12 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"github.com/gin-contrib/multitemplate"
 	"github.com/gin-gonic/gin"
 	"github.com/nandiheath/kube-port-forwarder/internal/app/services/k8s"
 	"github.com/nandiheath/kube-port-forwarder/internal/app/services/process"
-	"html/template"
-	v12 "k8s.io/api/core/v1"
+	"github.com/nandiheath/kube-port-forwarder/internal/app/utils"
 	"net/http"
 	"path/filepath"
 )
@@ -39,9 +39,7 @@ func SetupHTMLRender(r *gin.Engine) {
 		layoutCopy := make([]string, len(layouts))
 		copy(layoutCopy, layouts)
 		files := append(layoutCopy, include)
-		renderer.AddFromFilesFuncs(filepath.Base(include), template.FuncMap{
-			"check": check,
-		}, files...)
+		renderer.AddFromFiles(filepath.Base(include), files...)
 	}
 
 	r.HTMLRender = renderer
@@ -62,10 +60,11 @@ func Route(r *gin.Engine) {
 		showNamespacePageWithError(c, namespace, "")
 	})
 
-	r.PUT("/namespace/:namespace", func(c *gin.Context) {
+	r.POST("/namespace/:namespace", func(c *gin.Context) {
 		namespace := c.Param("namespace")
 		var json PortForward
-		if err := c.ShouldBindJSON(&json); err != nil {
+		if err := c.ShouldBind(&json); err != nil {
+			fmt.Println(err)
 			showNamespacePageWithError(c, namespace, "invalid parameter")
 			return
 		}
@@ -83,13 +82,12 @@ func Route(r *gin.Engine) {
 
 func showNamespacePageWithError(c *gin.Context, namespace string, error string) {
 	services := k8s.GetServices(namespace)
+	forwardedServices := process.GetForwardedService(namespace)
+
+	// merge the two list into one
 	c.HTML(http.StatusOK, "namespace.tpl", gin.H{
 		"title":    namespace,
-		"services": services,
+		"services": utils.MapForwardedServiceAndService(services, forwardedServices),
 		"error":    error,
 	})
-}
-
-func check(service *v12.Service) string {
-	return service.Name
 }
