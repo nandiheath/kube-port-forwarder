@@ -1,82 +1,94 @@
 package process
 
 import (
-    "fmt"
-    "os/exec"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"os/exec"
+	"time"
 )
 
 type Service struct {
-    ServiceName string
-    Namespace string
-    FromPort int
-    ToPort int
-    StartAt time.Time
-    FailedCount int
+	ServiceName string
+	Namespace   string
+	FromPort    int
+	ToPort      int
+	StartAt     time.Time
+	FailedCount int
+	Status      string
 }
 
 type ServiceMonitor struct {
-    Services []*Service
+	Services []*Service
 }
 
 var _serviceMonitor = ServiceMonitor{
-    Services: []*Service{},
+	Services: []*Service{},
 }
 
 func registerService(namespace string, serviceName string, fromPort int, toPort int) bool {
 
-    service := getService(namespace, serviceName)
-    if service != nil {
-        return false
-    }
+	service := getService(namespace, serviceName)
+	if service != nil {
+		return false
+	}
 
-    service = &Service{
-        ServiceName:serviceName,
-        Namespace: namespace,
-        FromPort: fromPort,
-        ToPort: toPort,
-        StartAt: time.Now(),
-        FailedCount: 0,
-    }
-    _serviceMonitor.Services = append(_serviceMonitor.Services, service)
+	service = &Service{
+		ServiceName: serviceName,
+		Namespace:   namespace,
+		FromPort:    fromPort,
+		ToPort:      toPort,
+		StartAt:     time.Now(),
+		FailedCount: 0,
+		Status:      "Pending",
+	}
+	_serviceMonitor.Services = append(_serviceMonitor.Services, service)
 
-    go runService(service)
-    return true
+	go runService(service)
+	return true
 }
 
 func runService(service *Service) {
-    cmd := exec.Command("kubectl", "port-forward", "svc/" + service.ServiceName , "-n", service.Namespace, fmt.Sprintf("%d:%d", service.ToPort, service.FromPort))
-    err := cmd.Start()
-    if err != nil {
-       log.Fatal(err)
-    }
-    log.Printf("Waiting for command to finish...")
-    err = cmd.Wait()
-    if err != nil {
-        log.Println(err)
-        service.FailedCount ++
-        if service.FailedCount < 5 {
-            go runService(service)
-        }
-    }
+	cmd := exec.Command("kubectl", "port-forward", "svc/"+service.ServiceName, "-n", service.Namespace, fmt.Sprintf("%d:%d", service.ToPort, service.FromPort))
+	err := cmd.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Waiting for command to finish...")
+	err = cmd.Wait()
+	if err != nil {
+		log.Println(err)
+		service.FailedCount++
+		if service.FailedCount < 5 {
+			go runService(service)
+		} else {
+			service.Status = "Failed"
+		}
+	}
 }
 
 func getService(namespace string, serviceName string) *Service {
-    for _, service := range _serviceMonitor.Services {
-        if service.ServiceName == serviceName && service.Namespace == namespace {
-            return service
-        }
-    }
-    return nil
+	for _, service := range _serviceMonitor.Services {
+		if service.ServiceName == serviceName && service.Namespace == namespace {
+			return service
+		}
+	}
+	return nil
 }
 
 func PortForward(namespace string, serviceName string, fromPort int, toPort int) bool {
-    success := registerService(namespace, serviceName, fromPort, toPort)
-    if !success {
-        return false
-    }
+	success := registerService(namespace, serviceName, fromPort, toPort)
+	if !success {
+		return false
+	}
+	return true
+}
 
-    return true
-
+func GetServiceStatus(namespace string) []*Service {
+	var services []*Service
+	for _, service := range _serviceMonitor.Services {
+		if service.Namespace == namespace {
+			services = append(services, service)
+		}
+	}
+	return services
 }
