@@ -28,20 +28,27 @@ var _serviceMonitor = ForwardedServiceList{
 func registerService(namespace string, serviceName string, fromPort int, toPort int) bool {
 
 	service := getService(namespace, serviceName)
-	if service != nil {
+	if service != nil && service.Status != "Failed" {
 		return false
 	}
 
-	service = &ForwardedService{
-		ServiceName: serviceName,
-		Namespace:   namespace,
-		FromPort:    fromPort,
-		ToPort:      toPort,
-		StartAt:     time.Now(),
-		FailedCount: 0,
-		Status:      "Pending",
+	if service == nil {
+		service = &ForwardedService{
+			ServiceName: serviceName,
+			Namespace:   namespace,
+			FromPort:    fromPort,
+			ToPort:      toPort,
+			StartAt:     time.Now(),
+			FailedCount: 0,
+			Status:      "Pending",
+		}
+		_serviceMonitor.Services = append(_serviceMonitor.Services, service)
+	} else {
+		service.FromPort = fromPort
+		service.ToPort = toPort
+		service.FailedCount = 0
+		service.StartAt = time.Now()
 	}
-	_serviceMonitor.Services = append(_serviceMonitor.Services, service)
 
 	go runService(service)
 	return true
@@ -53,6 +60,7 @@ func runService(service *ForwardedService) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	service.Status = "Forwarded"
 	log.Printf("Waiting for command to finish...")
 	err = cmd.Wait()
 	if err != nil {
@@ -66,7 +74,7 @@ func runService(service *ForwardedService) {
 	}
 }
 
-func getService(namespace string, serviceName string) *ForwardedService{
+func getService(namespace string, serviceName string) *ForwardedService {
 	for _, service := range _serviceMonitor.Services {
 		if service.ServiceName == serviceName && service.Namespace == namespace {
 			return service
