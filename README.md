@@ -9,27 +9,31 @@ With the help of this tool, user can port-forward services on kubernetes cluster
 - `~/.kube/config` file exists
 - access rights to the current kubernetes cluster
 
-### Attensions
+### Attention
 
 - Multi-cluster not supported
   - Work only with the current cluster context from your `~/.kube/config`
 - Location of the kube config file
-  - support only `~/.kube/config`
+  - fixed at `~/.kube/config`
 - One service only be able to forward one port
 - All port-forwards are spawned as child process
-  - will be killed directly if the go service died
+  - will be killed directly if the server process died
 
 ## Start
 
 ```bash
 
-go build
+git clone git@github.com:nandiheath/kube-port-forwarder.git
 
-# Run as default 8080 port
-go run cmd/port_forwarder/main.go
+cd kube-port-forwarder
 
-# OR run with custom port
-PORT=8081 go run cmd/port_forwarder/main.go
+# Start the service at port 8080
+./scripts/server.sh start
+
+# or start the service at custom port
+./scripts/server.sh start 9000
+
+# Stop the service
+./scripts/server.sh stop
+
 ```
-
-This will create the webUI at `localhost:8080`
