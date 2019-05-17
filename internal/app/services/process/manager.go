@@ -63,7 +63,9 @@ func runService(service *ForwardedService) {
 	service.Status = "Forwarded"
 	log.Printf("Waiting for command to finish...")
 	err = cmd.Wait()
+
 	if err != nil {
+		log.Printf("Process terminated with error. Will retry again")
 		log.Println(err)
 		service.FailedCount++
 		if service.FailedCount < 5 {
@@ -71,7 +73,12 @@ func runService(service *ForwardedService) {
 		} else {
 			service.Status = "Failed"
 		}
+	} else {
+		log.Printf("Process terminated. Restart again")
+		// Just restart the service
+		go runService(service)
 	}
+
 }
 
 func getService(namespace string, serviceName string) *ForwardedService {
